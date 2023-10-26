@@ -1,0 +1,14 @@
+inputSet:
+  name: Build_spring_boot_1698302976345-pr-trigger-input-set
+  identifier: Build_spring_boot_1698302976345prtriggerinputset
+  orgIdentifier: default
+  projectIdentifier: mydemo
+  pipeline:
+    identifier: Build_spring_boot_1698302976345
+    properties:
+      ci:
+        codebase:
+          build:
+            type: PR
+            spec:
+              number: <+trigger.prNumber>
