@@ -24,6 +24,38 @@ pipeline:
                     command: echo hello world
                   timeout: ""
                   type: Run
+              - step:
+                  type: GitClone
+                  name: GitClone_1
+                  identifier: GitClone_1
+                  spec:
+                    connectorRef: account.Github
+                    repoName: maimoonak
+                    build:
+                      type: branch
+                      spec:
+                        branch: dev
+                  failureStrategies:
+                    - onFailure:
+                        errors:
+                          - Timeout
+                          - ApprovalRejection
+                        action:
+                          type: ManualIntervention
+                          spec:
+                            onTimeout:
+                              action:
+                                type: MarkAsFailure
+                            timeout: 1w
+              - step:
+                  type: BuildAndPushDockerRegistry
+                  name: BuildAndPushDockerRegistry_1
+                  identifier: BuildAndPushDockerRegistry_1
+                  spec:
+                    connectorRef: account.harnessImage
+                    repo: testharrepo
+                    tags:
+                      - 0.0.1
           platform:
             arch: Amd64
             os: Linux
@@ -31,3 +63,103 @@ pipeline:
             spec: {}
             type: Cloud
         type: CI
+    - stage:
+        name: deploy-to-aws
+        identifier: deploytoaws
+        description: ""
+        type: Deployment
+        spec:
+          deploymentType: ECS
+          service:
+            serviceRef: mydemoec2
+          environment:
+            environmentRef: mydemoenvironemnt
+            deployToAll: false
+            infrastructureDefinitions:
+              - identifier: mydemoinfr
+          execution:
+            steps:
+              - step:
+                  name: ECS Rolling Deploy
+                  identifier: ecsRollingDeploy
+                  type: EcsRollingDeploy
+                  timeout: 10m
+                  spec: {}
+            rollbackSteps:
+              - step:
+                  name: ECS Rolling Rollback
+                  identifier: ecsRollingRollback
+                  type: EcsRollingRollback
+                  timeout: 10m
+                  spec: {}
+        tags: {}
+        failureStrategies:
+          - onFailure:
+              errors:
+                - AllErrors
+              action:
+                type: StageRollback
+    - stage:
+        name: my-demo-pm-approval
+        identifier: mydemopmapproval
+        description: ""
+        type: Approval
+        spec:
+          execution:
+            steps:
+              - step:
+                  type: CustomApproval
+                  name: the approval of demo
+                  identifier: the_approval_of_demo
+                  timeout: 1d
+                  spec:
+                    shell: Bash
+                    retryInterval: 10s
+                    scriptTimeout: 10m
+                    source:
+                      type: Inline
+                      spec:
+                        script: curl http://google.com
+                    environmentVariables: []
+                    approvalCriteria:
+                      type: KeyValues
+                      spec:
+                        matchAnyCondition: false
+                        conditions:
+                          - key: demo-a
+                            operator: equals
+                            value: "true"
+                    rejectionCriteria:
+                      type: KeyValues
+                      spec:
+                        matchAnyCondition: false
+                        conditions: []
+                    onDelegate: true
+                    outputVariables:
+                      - name: demo-a
+                        type: String
+                        value: "true"
+        tags: {}
+    - stage:
+        name: mycustom-stage
+        identifier: mycustomstage
+        description: ""
+        type: Custom
+        spec:
+          execution:
+            steps:
+              - step:
+                  type: ShellScript
+                  name: ShellScript_1
+                  identifier: ShellScript_1
+                  spec:
+                    shell: Bash
+                    onDelegate: true
+                    source:
+                      type: Inline
+                      spec:
+                        script: curl http://google.com
+                    environmentVariables: []
+                    outputVariables: []
+                  timeout: 10m
+        tags: {}
